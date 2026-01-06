@@ -1,7 +1,7 @@
 # Overview
-This project is a high-accuracy Retrieval-Augmented Generation (RAG) system designed to bridge the gap between "fuzzy" vector searches and the strict data integrity required for technical research.
+This project is a high-accuracy Retrieval-Augmented Generation (RAG) system designed to bridge the gap between vector searches and the strict data integrity required for technical research.
 
-While the system is completely data-agnostic—capable of ingestng everything from legal contracts to software documentation—I have primarily benchmarked and tested its performance using SARS-CoV-2 genomic datasets from the FIRE Research Program.
+While the system is completely data-agnostic—capable of ingesting everything from legal contracts to software documentation, I have benchmarked and tested its performance using SARS-CoV-2 genomic datasets from the FIRE Research Program.
 
 # The Challenge
 In bioinformatics, missing a single mutation coordinate or misidentifying an accession number can invalidate a phylogenetic analysis. Standard RAG systems often suffer from "contextual noise," where the LLM is overwhelmed by irrelevant bunches of text.
