@@ -3,12 +3,10 @@ This project is a high-accuracy Retrieval-Augmented Generation (RAG) system desi
 
 While the system is completely data-agnostic—capable of ingestng everything from legal contracts to software documentation—I have primarily benchmarked and tested its performance using SARS-CoV-2 genomic datasets from the FIRE Research Program.
 
-# The "Zero-Error" Challenge
-In bioinformatics, "close enough" is a failure. Missing a single mutation coordinate or misidentifying an accession number can invalidate a phylogenetic analysis. Standard RAG systems often suffer from "contextual noise," where the LLM is overwhelmed by irrelevant chunks of text.
+# The Challenge
+In bioinformatics, missing a single mutation coordinate or misidentifying an accession number can invalidate a phylogenetic analysis. Standard RAG systems often suffer from "contextual noise," where the LLM is overwhelmed by irrelevant bunches of text.
 
-# The Intelligent Pipeline: Librarian & Judge
 To solve this, I implemented a Two-Stage Retrieval Architecture:
-
 
 '''Stage 1: The Librarian (Vector Search): Uses ChromaDB and OpenAIEmbeddings to quickly sweep the dataset and find the 10 most mathematically similar chunks.'''
 
