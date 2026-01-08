@@ -57,7 +57,7 @@ rag_chain = RetrievalQA.from_chain_type(
     llm=ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=api_key),
     chain_type="stuff",
     retriever=compression_retriever,
-    return_source_documents=True # MUST add this line
+    return_source_documents=True 
 )
 
 # test exec
@@ -66,6 +66,5 @@ result = rag_chain.invoke(query)
 
 print(f"\nAI Answer: {result['result']}")
 print("\nSources Used:")
-# This loop now works because return_source_documents=True was added above
 for doc in result["source_documents"]:
     print(f"- {doc.metadata['source']} (Page {doc.metadata.get('page', 1)})")
