@@ -1,32 +1,12 @@
-# Overview
-This project is a high-accuracy Retrieval-Augmented Generation (RAG) system designed to bridge the gap between vector searches and the strict data integrity required for technical research.
+This is a high-accuracy Retrieval-Augmented Generation (RAG) system built to handle dense, technical documents where data integrity is critical. While the pipeline can process any text, I benchmarked it against SARS-CoV-2 genomic datasets.
 
-While the system is completely data-agnostic—capable of ingesting everything from legal contracts to software documentation, I have benchmarked and tested its performance using SARS-CoV-2 genomic datasets from the FIRE Research Program.
+# The Problem
+Standard RAG systems suffer from "contextual noise." If an LLM is flooded with vaguely related text, it hallucinates. In bioinformatics, missing a single mutation coordinate or misidentifying an accession number completely invalidates the analysis.
 
-# The Challenge
-In bioinformatics, missing a single mutation coordinate or misidentifying an accession number can invalidate a phylogenetic analysis. Standard RAG systems often suffer from "contextual noise," where the LLM is overwhelmed by irrelevant bunches of text.
+# The Solution
+To fix this, I built a two-stage retrieval pipeline:
 
-To solve this, I implemented a Two-Stage Retrieval Architecture:
+Stage 1 (Vector Search): ChromaDB and OpenAI Embeddings execute a fast initial sweep to pull the 10 most relevant text chunks.
 
-```Stage 1: The Librarian (Vector Search): Uses ChromaDB and OpenAIEmbeddings to quickly sweep the dataset and find the 10 most mathematically similar chunks. ```
-
-
-``` Stage 2: The Judge (Flashrank Reranker): A lightweight Cross-Encoder model that performs deep semantic analysis on those 10 chunks. It re-scores them to ensure the specific data needed (like a mutation presence) is moved to the top of the context window. ```
-
-# Benchmarking with Genomic Data
-I validated the framework using two complex datasets:
-
-Phylogenetic Tree Legend: 101 viral sequences from November 2020, aligned to reference NC045512.
-Sequence Metadata Table: Mapping accession numbers (e.g., MW653491) to geographic locations and mutation presence.
-Performance results: The system successfully mapped the B.1.1.7 (Alpha) variant and its specific indicators—the P681H mutation and 69/70 deletion—without hallucination.
-
-# Tech Stack
-``` Framework: LangChain ```
-
-```Vector Store: ChromaDB (with persistence)```
-
-```Embeddings/LLM: OpenAI GPT-4o ```
-
-```Reranker: Flashrank```
-
-```Environment: Python-dotenv for secure API management```
+Stage 2 (Reranking): A lightweight Flashrank Cross-Encoder performs a deep semantic analysis on those 10 chunks. It re-scores them to guarantee the exact data needed is prioritized at the top of the context window.# Overview
+secure API management```
