@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv 
-# loads API key
 load_dotenv("key.env")
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
@@ -27,8 +26,8 @@ documents = loader_tree.load() + loader_table.load()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
 chunks = text_splitter.split_documents(documents)
 
-# Creating the Vector Space
-# Using embedding model to convert text to floats and saves them into the 'persist_directory'
+#Vector Space
+# Using embedding model to convert text to floats and saves them 
 vector_db = Chroma.from_documents(
     documents=chunks,
     embedding=OpenAIEmbeddings(openai_api_key=api_key), 
@@ -36,7 +35,7 @@ vector_db = Chroma.from_documents(
 )
 
 #Two-Stage Filtering
-# fetches 10 neighbors based on cosine similarity
+# grabs 10 neighbors based on cosine similarity
 base_retriever = vector_db.as_retriever(search_kwargs={"k": 10})
 
 # Cross-encoder model with flashrankRerank
@@ -50,7 +49,7 @@ compression_retriever = ContextualCompressionRetriever(
 )
 
 # RAG Chain
-# Forcing compressed chunks (10 max) in prompt for LLM
+# Forcing compressed chunksin prompt for LLM
 # Explicitly pass the key and return source documents to prevent crashes
 llm = ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=api_key)
 rag_chain = RetrievalQA.from_chain_type(
