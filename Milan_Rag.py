@@ -1,12 +1,6 @@
 import os
+import glob
 from dotenv import load_dotenv 
-load_dotenv("key.env")
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("API Key not found. Check your key.env file.")
-# pip install langchain langchain-openai langchain-community chromadb flashrank pypdf
-# pip install python-dotenv
-
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -16,54 +10,98 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import FlashrankRerank
 from langchain.chains import RetrievalQA
 
-# Loading   Research Data
-loader_tree = PyPDFLoader("asn5 tree visualization with legend.pdf")
-loader_table = PyPDFLoader("Sequence table - sequences (1).pdf")
-documents = loader_tree.load() + loader_table.load() 
+class BioRAGPipeline:
+    def __init__(self, data_dir="sample_data", persist_dir="./chroma_db"):
+        load_dotenv("key.env")
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise ValueError("API Key not found. Check your key.env file.")
+        
+        self.data_dir = data_dir
+        self.persist_dir = persist_dir
+        self.rag_chain = None
 
-# Recursive Character Splitting
-# 1000 chunk size with 150 overlap to keep explanations together
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
-chunks = text_splitter.split_documents(documents)
+    def load_and_process_documents(self):
+        pdf_files = glob.glob(os.path.join(self.data_dir, "*.pdf"))
+        
+        if not pdf_files:
+            print(f"Warning: No PDF files found in the '{self.data_dir}' directory.")
+            return []
 
-#Vector Space
-# Using embedding model to convert text to floats and saves them 
-vector_db = Chroma.from_documents(
-    documents=chunks,
-    embedding=OpenAIEmbeddings(openai_api_key=api_key), 
-    persist_directory="./chroma_db"
-)
+        documents = []
+        for file in pdf_files:
+            loader = PyPDFLoader(file)
+            documents.extend(loader.load())
+            
+        print(f"Loaded {len(pdf_files)} document(s).")
 
-#Two-Stage Filtering
-# grabs 10 neighbors based on cosine similarity
-base_retriever = vector_db.as_retriever(search_kwargs={"k": 10})
+        # large chunk size with 150 overlap 
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+        chunks = text_splitter.split_documents(documents)
+        print(f"Split into {len(chunks)} chunks.")
+        
+        return chunks
 
-# Cross-encoder model with flashrankRerank
-compressor = FlashrankRerank()
+    def build_system(self):
+        """Constructs the vector database, reranker, and execution chain."""
+        chunks = self.load_and_process_documents()
+        
+        if not chunks:
+            print("System build aborted: No data to process.")
+            return
 
-# Executes 'base_retriever' first then passes results to 'compressor' 
-# to re-check relevance scores
-compression_retriever = ContextualCompressionRetriever(
-    base_compressor=compressor, 
-    base_retriever=base_retriever
-)
+        print("Building vector database with ChromaDB...")
+        vector_db = Chroma.from_documents(
+            documents=chunks,
+            embedding=OpenAIEmbeddings(openai_api_key=self.api_key), 
+            persist_directory=self.persist_dir
+        )
 
-# RAG Chain
-# Forcing compressed chunksin prompt for LLM
-# Explicitly pass the key and return source documents to prevent crashes
-llm = ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=api_key)
-rag_chain = RetrievalQA.from_chain_type(
-    llm=ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=api_key),
-    chain_type="stuff",
-    retriever=compression_retriever,
-    return_source_documents=True 
-)
+        # TwoStage Filtering
+        base_retriever = vector_db.as_retriever(search_kwargs={"k": 10})
+        compressor = FlashrankRerank()
 
-# test exec
-query = "Which accession numbers are associated with the P681H mutation?"
-result = rag_chain.invoke(query)
+        compression_retriever = ContextualCompressionRetriever(
+            base_compressor=compressor, 
+            base_retriever=base_retriever
+        )
 
-print(f"\nAI Answer: {result['result']}")
-print("\nSources Used:")
-for doc in result["source_documents"]:
-    print(f"- {doc.metadata['source']} (Page {doc.metadata.get('page', 1)})")
+        # RAG 
+        llm = ChatOpenAI(model_name="gpt-4o", temperature=0, openai_api_key=self.api_key)
+        self.rag_chain = RetrievalQA.from_chain_type(
+            llm=llm,
+            chain_type="stuff",
+            retriever=compression_retriever,
+            return_source_documents=True 
+        )
+        print("System ready.\n")
+
+    def query(self, user_question):
+        """Executes a query against the RAG chain and formats the output."""
+        if not self.rag_chain:
+            print("Error: RAG chain is not built. Call build_system() first.")
+            return
+
+        print(f"Querying: '{user_question}'\nProcessing...")
+        result = self.rag_chain.invoke(user_question)
+
+        print("-" * 50)
+        print(f"AI Answer: {result['result']}")
+        print("-" * 50)
+        print("Sources Used:")
+        
+        for doc in result["source_documents"]:
+            source_name = os.path.basename(doc.metadata.get('source', 'Unknown Document'))
+            page_num = doc.metadata.get('page', 1)
+            print(f"- {source_name} (Page {page_num})")
+
+
+if __name__ == "__main__":
+    os.makedirs("sample_data", exist_ok=True)
+    # run
+    rag_system = BioRAGPipeline()
+    rag_system.build_system()
+    
+    # Test execution
+    test_query = "Which accession numbers are associated with the P681H mutation?"
+    rag_system.query(test_query)
